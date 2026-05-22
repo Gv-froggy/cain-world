@@ -4,8 +4,22 @@
     <meta charset="UTF-8" />
     <title>Caine World</title>
     <style>
-      
-* { margin: 0; padding: 0; }
-    body { background: black; overflow: hidden; }
-    canvas { display: block; }</style></head><body><script type="module" src="./main.js"></script></body>
+      * { margin: 0; padding: 0; }
+      body { background: black; overflow: hidden; }
+      canvas { display: block; }
+    </style>
+
+    <!-- Dit au navigateur où trouver "three" quand le GLTFLoader l'importe -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+          "three/examples/jsm/loaders/GLTFLoader.js": "https://unpkg.com/three@0.128.0/examples/jsm/loaders/GLTFLoader.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <script type="module" src="./js/main.js"></script>
+  </body>
 </html>
