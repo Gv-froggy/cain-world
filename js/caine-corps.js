@@ -29,12 +29,8 @@ export class GestionnaireCorps {
     this.os = {}
     this.repos = {}
     this.cibles = {}
-    this.scores = {}
     this.vitesseInterp = 0.05
     this._frameExploration = 0
-    this._intervalle = 40
-    this._essaiActuel = null
-    this._pasCote = false
   }
 
   // ── Geste de création ────────────────────────────
@@ -44,11 +40,9 @@ export class GestionnaireCorps {
       if (this.os['brasD']) this.cibles['brasD'] = { x: this.repos['brasD'].x - 1.4, y: this.repos['brasD'].y, z: this.repos['brasD'].z }
       if (this.os['brasG']) this.cibles['brasG'] = { x: this.repos['brasG'].x - 1.4, y: this.repos['brasG'].y, z: this.repos['brasG'].z }
       if (this.os['tete'])  this.cibles['tete']  = { x: this.repos['tete'].x - 0.3,  y: this.repos['tete'].y,  z: this.repos['tete'].z  }
-      console.log('Caine empile — bras levés !')
     } else {
       if (this.os['brasD'])      this.cibles['brasD']      = { x: this.repos['brasD'].x + 1.2,      y: this.repos['brasD'].y,      z: this.repos['brasD'].z      }
       if (this.os['avantBrasD']) this.cibles['avantBrasD'] = { x: this.repos['avantBrasD'].x + 0.4, y: this.repos['avantBrasD'].y, z: this.repos['avantBrasD'].z }
-      console.log('Caine pose — bras tendu !')
     }
     setTimeout(() => {
       for (const cle of ['brasD', 'brasG', 'avantBrasD', 'tete']) {
@@ -57,25 +51,43 @@ export class GestionnaireCorps {
     }, 1000)
   }
 
-  // ── Pas de marche — chaque pas = un déplacement ──
+  // ── Marche sinusoïdale ───────────────────────────
 
-  declencherPas() {
-    this._pasCote = !this._pasCote
-    const t = this._pasCote ? 1 : -1
+  mettreAJourMarche(frameCount) {
+    const t = frameCount * 0.06
+    const amp = 0.4
 
-    // Cuisses alternées
-    if (this.os['cuisseG']) this.cibles['cuisseG'] = { x: this.repos['cuisseG'].x + t * 0.5, y: this.repos['cuisseG'].y, z: this.repos['cuisseG'].z }
-    if (this.os['cuisseD']) this.cibles['cuisseD'] = { x: this.repos['cuisseD'].x - t * 0.5, y: this.repos['cuisseD'].y, z: this.repos['cuisseD'].z }
+    // Cuisses — avant/arrière sur X
+    if (this.os['cuisseG']) this.cibles['cuisseG'] = {
+      x: this.repos['cuisseG'].x + Math.sin(t) * amp,
+      y: this.repos['cuisseG'].y,
+      z: this.repos['cuisseG'].z
+    }
+    if (this.os['cuisseD']) this.cibles['cuisseD'] = {
+      x: this.repos['cuisseD'].x - Math.sin(t) * amp,
+      y: this.repos['cuisseD'].y,
+      z: this.repos['cuisseD'].z
+    }
 
-    // Genou plié sur la jambe qui avance
-    if (this.os['molletG']) this.cibles['molletG'] = { x: this.repos['molletG'].x + (t > 0 ? 0.4 : 0.0), y: this.repos['molletG'].y, z: this.repos['molletG'].z }
-    if (this.os['molletD']) this.cibles['molletD'] = { x: this.repos['molletD'].x + (t < 0 ? 0.4 : 0.0), y: this.repos['molletD'].y, z: this.repos['molletD'].z }
+    // Mollets — bloqués au repos pour éviter les glitchs
+    if (this.os['molletG']) this.cibles['molletG'] = { ...this.repos['molletG'] }
+    if (this.os['molletD']) this.cibles['molletD'] = { ...this.repos['molletD'] }
 
-    // Bras opposés qui balancent
-    if (this.os['brasG']) this.cibles['brasG'] = { x: this.repos['brasG'].x - t * 0.3, y: this.repos['brasG'].y, z: this.repos['brasG'].z }
-    if (this.os['brasD']) this.cibles['brasD'] = { x: this.repos['brasD'].x + t * 0.3, y: this.repos['brasD'].y, z: this.repos['brasD'].z }
+    // Pieds — restent plats
+    if (this.os['piedG']) this.cibles['piedG'] = { ...this.repos['piedG'] }
+    if (this.os['piedD']) this.cibles['piedD'] = { ...this.repos['piedD'] }
 
-    return 0.15  // distance parcourue par ce pas
+    // Bras opposés aux cuisses
+    if (this.os['brasG']) this.cibles['brasG'] = {
+      x: this.repos['brasG'].x - Math.sin(t) * 0.3,
+      y: this.repos['brasG'].y,
+      z: this.repos['brasG'].z
+    }
+    if (this.os['brasD']) this.cibles['brasD'] = {
+      x: this.repos['brasD'].x + Math.sin(t) * 0.3,
+      y: this.repos['brasD'].y,
+      z: this.repos['brasD'].z
+    }
   }
 
   // ── Initialisation ───────────────────────────────
@@ -90,7 +102,6 @@ export class GestionnaireCorps {
         this.os[cle]     = os
         this.repos[cle]  = { x: os.rotation.x, y: os.rotation.y, z: os.rotation.z }
         this.cibles[cle] = { x: os.rotation.x, y: os.rotation.y, z: os.rotation.z }
-        this.scores[cle] = {}
         trouves++
       }
     }
@@ -110,13 +121,21 @@ export class GestionnaireCorps {
   mettreAJour(cainePos, caineTorsion, enMouvement) {
     this._frameExploration++
 
-    // Au repos — revient doucement au neutre
     if (!enMouvement) {
       if (this._frameExploration % 60 === 0) this.revenirAuRepos()
+    } else {
+      // Marche sinusoïdale
+      this.mettreAJourMarche(this._frameExploration)
+      // Tronc et tête restent au repos pendant la marche
+      const osMarche = ['cuisseG', 'cuisseD', 'molletG', 'molletD', 'piedG', 'piedD', 'brasG', 'brasD']
+      for (const cle of Object.keys(this.os)) {
+        if (!osMarche.includes(cle)) {
+          this.cibles[cle] = { ...this.repos[cle] }
+        }
+      }
     }
-    // Pendant la marche, c'est declencherPas() qui gère les jambes
 
-    // Interpolation douce vers les cibles
+    // Interpolation douce
     for (const [cle, os] of Object.entries(this.os)) {
       const cible = this.cibles[cle]
       if (!cible) continue
