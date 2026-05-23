@@ -1,4 +1,4 @@
-# Caine World AI
+# Caine World
 
 An experimental AI recreation of Caine from The Amazing Digital Circus.
 
