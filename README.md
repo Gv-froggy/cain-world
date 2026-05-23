@@ -3,12 +3,12 @@
 An experimental AI recreation of Caine from The Amazing Digital Circus.
 
 
-!!! ## Current Status
+!!!  Current Status
 
 The procedural locomotion system is currently being reworked.
 
 Previous versions allowed autonomous movement without proper leg animation synchronization.
-The current goal is to create a fully procedural walking system synchronized with movement.!!!
+The current goal is to create a fully procedural walking system synchronized with movement.  !!!
 
 
 ## Features
