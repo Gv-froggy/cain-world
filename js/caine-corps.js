@@ -51,40 +51,44 @@ export class GestionnaireCorps {
     }, 1000)
   }
 
-  // ── Marche sinusoïdale ───────────────────────────
+  // ── Marche par cycle de pas ───────────────────────
 
   mettreAJourMarche(frameCount) {
-    const t = frameCount * 0.06
-    const amp = 0.4
+    const cycle  = (frameCount * 0.06) % (Math.PI * 2)
+    const cycleD = (cycle + Math.PI) % (Math.PI * 2)
 
-    // Cuisses — avant/arrière sur X
-    if (this.os['cuisseG']) this.cibles['cuisseG'] = {
-      x: this.repos['cuisseG'].x + Math.sin(t) * amp,
-      y: this.repos['cuisseG'].y,
-      z: this.repos['cuisseG'].z
+    const poserJambe = (phase, cle_cuisse, cle_mollet, cle_pied) => {
+      const sin = Math.sin(phase)
+      const estEnLevee = sin > 0
+
+      if (this.os[cle_cuisse]) this.cibles[cle_cuisse] = {
+        x: this.repos[cle_cuisse].x + sin * 0.5,
+        y: this.repos[cle_cuisse].y,
+        z: this.repos[cle_cuisse].z
+      }
+      if (this.os[cle_mollet]) this.cibles[cle_mollet] = {
+        x: this.repos[cle_mollet].x + (estEnLevee ? Math.max(0, sin) * 0.8 : 0),
+        y: this.repos[cle_mollet].y,
+        z: this.repos[cle_mollet].z
+      }
+      if (this.os[cle_pied]) this.cibles[cle_pied] = {
+        x: this.repos[cle_pied].x - (estEnLevee ? sin * 0.3 : 0),
+        y: this.repos[cle_pied].y,
+        z: this.repos[cle_pied].z
+      }
     }
-    if (this.os['cuisseD']) this.cibles['cuisseD'] = {
-      x: this.repos['cuisseD'].x - Math.sin(t) * amp,
-      y: this.repos['cuisseD'].y,
-      z: this.repos['cuisseD'].z
-    }
 
-    // Mollets — bloqués au repos pour éviter les glitchs
-    if (this.os['molletG']) this.cibles['molletG'] = { ...this.repos['molletG'] }
-    if (this.os['molletD']) this.cibles['molletD'] = { ...this.repos['molletD'] }
+    poserJambe(cycle,  'cuisseG', 'molletG', 'piedG')
+    poserJambe(cycleD, 'cuisseD', 'molletD', 'piedD')
 
-    // Pieds — restent plats
-    if (this.os['piedG']) this.cibles['piedG'] = { ...this.repos['piedG'] }
-    if (this.os['piedD']) this.cibles['piedD'] = { ...this.repos['piedD'] }
-
-    // Bras opposés aux cuisses
+    // Bras opposés
     if (this.os['brasG']) this.cibles['brasG'] = {
-      x: this.repos['brasG'].x - Math.sin(t) * 0.3,
+      x: this.repos['brasG'].x - Math.sin(cycle) * 0.3,
       y: this.repos['brasG'].y,
       z: this.repos['brasG'].z
     }
     if (this.os['brasD']) this.cibles['brasD'] = {
-      x: this.repos['brasD'].x + Math.sin(t) * 0.3,
+      x: this.repos['brasD'].x + Math.sin(cycle) * 0.3,
       y: this.repos['brasD'].y,
       z: this.repos['brasD'].z
     }
@@ -124,9 +128,7 @@ export class GestionnaireCorps {
     if (!enMouvement) {
       if (this._frameExploration % 60 === 0) this.revenirAuRepos()
     } else {
-      // Marche sinusoïdale
       this.mettreAJourMarche(this._frameExploration)
-      // Tronc et tête restent au repos pendant la marche
       const osMarche = ['cuisseG', 'cuisseD', 'molletG', 'molletD', 'piedG', 'piedD', 'brasG', 'brasD']
       for (const cle of Object.keys(this.os)) {
         if (!osMarche.includes(cle)) {
@@ -135,7 +137,6 @@ export class GestionnaireCorps {
       }
     }
 
-    // Interpolation douce
     for (const [cle, os] of Object.entries(this.os)) {
       const cible = this.cibles[cle]
       if (!cible) continue

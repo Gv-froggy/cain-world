@@ -650,46 +650,36 @@ function deplacerVerDestination(destination) {
   if (distanceRestante > 0.2) {
     direction.normalize()
 
-    // Accumule le temps — le pas se déclenche à intervalle régulier
-    marche.distancePas++
+// La vitesse est proportionnelle à l'oscillation des jambes
+    // Math.abs(sin) va de 0 à 1 selon la phase du cycle
+    const phaseMarche = Math.abs(Math.sin(corps._frameExploration * 0.06))
+   // Avance seulement quand un pied pousse — phase d'appui
+    const cycleG = Math.sin(corps._frameExploration * 0.06)
+    const cycleD = Math.sin(corps._frameExploration * 0.06 + Math.PI)
+    const poussee = Math.max(0, -cycleG) + Math.max(0, -cycleD)
+    marche.vitesseActuelle = marche.vitesseMax * poussee * 0.6
+    const next = new THREE.Vector3(
+      caine.position.x + direction.x * marche.vitesseActuelle,
+      1,
+      caine.position.z + direction.z * marche.vitesseActuelle
+    )
 
-    // Intervalle entre les pas diminue quand on accélère
-    const intervalleFrames = Math.max(8, Math.floor(30 - marche.vitesseActuelle * 200))
-
-    if (marche.distancePas >= intervalleFrames) {
-      marche.distancePas = 0
-
-      // Accélère progressivement
-      marche.vitesseActuelle = Math.min(marche.vitesseMax, marche.vitesseActuelle + marche.acceleration)
-
-      // Le pas déclenche le mouvement des jambes ET le déplacement
-      corps.declencherPas()
-
-      const distancePas = 0.15 * (marche.vitesseActuelle / marche.vitesseMax)
-      const next = new THREE.Vector3(
-        caine.position.x + direction.x * distancePas,
-        1,
-        caine.position.z + direction.z * distancePas
-      )
-
-      const obstacle = detecterCollision(next)
-      if (obstacle) {
-        marche.vitesseActuelle = 0
-        if (Math.random() > 0.5) {
-          cerveau.destination = calculerContournement(obstacle)
-          cerveau.etat = ETATS.CONTOURNER
-        } else {
-          cerveau.etat = ETATS.CHOISIR
-        }
+    const obstacle = detecterCollision(next)
+    if (obstacle) {
+      marche.vitesseActuelle = 0
+      if (Math.random() > 0.5) {
+        cerveau.destination = calculerContournement(obstacle)
+        cerveau.etat = ETATS.CONTOURNER
       } else {
-        caine.position.x = next.x
-        caine.position.z = next.z
-        caine.rotation.y = Math.atan2(direction.x, direction.z)
+        cerveau.etat = ETATS.CHOISIR
       }
+    } else {
+      caine.position.x = next.x
+      caine.position.z = next.z
+      caine.rotation.y = Math.atan2(direction.x, direction.z)
     }
     return false
   }
-
   marche.vitesseActuelle = 0
   return true
 }
